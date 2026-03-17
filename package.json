@@ -1,0 +1,21 @@
+{
+  "name": "ppt-webviewer",
+  "version": "1.0.0",
+  "description": "Overlay web content on PowerPoint presentations",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "powerpoint",
+    "webview",
+    "overlay",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^40.6.0"
+  }
+}
