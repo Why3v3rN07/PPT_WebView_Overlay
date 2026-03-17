@@ -1,0 +1,10 @@
+the half-second interval is not it
+add feature to set zoom percent
+fix the all-desktops problem - actually, it's only a prob with virtual desktops. with multiple displays it stays on the display with the presentation.
+the presentation stops when you click a different window - prob a ppt issue
+if you stop monitoring with an overlay open, it stays open
+the presentation gets stuck on the slide with 2 overlays -- just stops running, have to click to wake it up
+
+stretch goals:
+widgets (clock, weather, heb/eng date)
+non-rectangular shapes

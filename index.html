@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PowerPoint Web Viewer</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { margin-top: 0; color: #333; }
+    h2 { margin-top: 0; color: #444; font-size: 16px; }
+    .section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+    button:hover { background: #0052a3; }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .toggle-row label {
+      margin: 0;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+    }
+    .toggle-row .description {
+      font-size: 13px;
+      color: #888;
+      margin: 0;
+      font-weight: normal;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #ccc;
+      border-radius: 24px;
+      transition: 0.2s;
+    }
+    .slider:before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+    input:checked + .slider { background: #0066cc; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .syntax-box {
+      background: #f0f4f8;
+      border: 1px solid #d0dae5;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #333;
+      margin-top: 8px;
+    }
+    .syntax-box .comment {
+      color: #888;
+      font-style: italic;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 10px;
+      background: #e8f4f8;
+      border-left: 4px solid #0066cc;
+      border-radius: 4px;
+      display: none;
+    }
+    .status.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PowerPoint Web Viewer</h1>
+
+    <!-- Monitoring -->
+    <div class="section">
+      <h2>PowerPoint Monitoring</h2>
+      <p>Monitor PowerPoint presentations and automatically show web overlays.</p>
+      <button onclick="startMonitoring()" style="background:#28a745;">Start Monitoring</button>
+      <button onclick="stopMonitoring()" style="background:#dc3545;">Stop Monitoring</button>
+    </div>
+
+    <!-- Overlay behaviour -->
+    <div class="section">
+      <h2>Overlay Behaviour</h2>
+
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="persistToggle" onchange="savePersistSetting()">
+          <span class="slider"></span>
+        </label>
+        <div>
+          <label for="persistToggle">Persist overlay state by default</label>
+          <p class="description">
+            When on, overlay pages keep their scroll position and state if
+            you revisit a slide. When off, the page reloads fresh each time.
+          </p>
+        </div>
+      </div>
+
+      <div class="toggle-row" style="margin-top:16px;">
+        <label class="switch">
+          <input type="checkbox" id="interactiveToggle" onchange="saveInteractiveSetting()">
+          <span class="slider"></span>
+        </label>
+        <div>
+          <label for="interactiveToggle">Overlays interactive by default</label>
+          <p class="description">
+            When on, mouse clicks go to the overlay. When off, clicks pass
+            through to PowerPoint (useful for display-only content).
+          </p>
+        </div>
+      </div>
+
+      <p style="margin:14px 0 6px; font-size:13px; color:#555;">
+        Override either default per shape using flags in the alt text:
+      </p>
+      <div class="syntax-box">
+        [WEBVIEW]https://example.com [persist]<br>
+        <span class="comment">   ↑ always persist this shape</span><br><br>
+        [WEBVIEW]https://example.com [reload]<br>
+        <span class="comment">   ↑ always reload this shape</span><br><br>
+        [WEBVIEW]https://example.com [static]<br>
+        <span class="comment">   ↑ clicks pass through to PowerPoint</span><br><br>
+        [WEBVIEW]https://example.com [interactive]<br>
+        <span class="comment">   ↑ always capture clicks</span><br><br>
+        [WEBVIEW]https://example.com [persist] [static]<br>
+        <span class="comment">   ↑ flags can be combined</span>
+      </div>
+    </div>
+
+    <!-- Test overlay -->
+    <div class="section">
+      <h2>Test Overlay</h2>
+      <p>Use this to test if overlay windows work on your system.</p>
+      <label>URL:</label>
+      <input type="text" id="testUrl" value="https://www.example.com">
+      <label>X Position:</label>
+      <input type="number" id="testX" value="100">
+      <label>Y Position:</label>
+      <input type="number" id="testY" value="100">
+      <label>Width:</label>
+      <input type="number" id="testWidth" value="800">
+      <label>Height:</label>
+      <input type="number" id="testHeight" value="600">
+      <button onclick="testOverlay()">Create Test Overlay</button>
+      <button onclick="closeOverlays()" style="background:#dc3545;">Close All Overlays</button>
+    </div>
+
+    <!-- Shortcuts -->
+    <div class="section">
+      <h2>Keyboard Shortcuts</h2>
+      <ul>
+        <li><strong>Ctrl+Shift+Q</strong> — Close all overlay windows</li>
+      </ul>
+    </div>
+
+    <!-- Instructions -->
+    <div class="section">
+      <h2>Instructions</h2>
+      <ol>
+        <li>In PowerPoint, insert a rectangle shape where you want web content</li>
+        <li>Right-click the shape → Edit Alt Text</li>
+        <li>Type: <code>[WEBVIEW]https://your-url.com</code></li>
+        <li>Optionally add <code>[persist]</code> or <code>[reload]</code> after the URL</li>
+        <li>Start your slideshow and click <strong>Start Monitoring</strong></li>
+      </ol>
+    </div>
+
+    <div class="status" id="status">Ready.</div>
+  </div>
+
+  <script>
+    // Load saved setting on startup
+    window.addEventListener('DOMContentLoaded', async () => {
+      const persist = await window.electronAPI.getSetting('persistByDefault');
+      document.getElementById('persistToggle').checked = !!persist;
+      const interactive = await window.electronAPI.getSetting('interactiveByDefault');
+      document.getElementById('interactiveToggle').checked = interactive !== false;
+    });
+
+    function savePersistSetting() {
+      const val = document.getElementById('persistToggle').checked;
+      window.electronAPI.setSetting('persistByDefault', val);
+      showStatus(val ? 'Default: persist overlay state' : 'Default: reload overlay each visit', '#555', '#eee');
+    }
+
+    function saveInteractiveSetting() {
+      const val = document.getElementById('interactiveToggle').checked;
+      window.electronAPI.setSetting('interactiveByDefault', val);
+      showStatus(val ? 'Default: overlays are interactive' : 'Default: overlays are static (click-through)', '#555', '#eee');
+    }
+
+    function testOverlay() {
+      window.electronAPI.testOverlay({
+        url:    document.getElementById('testUrl').value,
+        x:      parseInt(document.getElementById('testX').value),
+        y:      parseInt(document.getElementById('testY').value),
+        width:  parseInt(document.getElementById('testWidth').value),
+        height: parseInt(document.getElementById('testHeight').value)
+      });
+      showStatus('Test overlay created! Check your screen.');
+    }
+
+    function closeOverlays() {
+      window.electronAPI.closeOverlays();
+      showStatus('All overlays closed!', '#721c24', '#f8d7da', '#dc3545');
+    }
+
+    function startMonitoring() {
+      window.electronAPI.startMonitoring();
+      showStatus('Started monitoring PowerPoint!', '#155724', '#d4edda', '#28a745');
+    }
+
+    function stopMonitoring() {
+      window.electronAPI.stopMonitoring();
+      showStatus('Stopped monitoring PowerPoint!', '#721c24', '#f8d7da', '#dc3545');
+    }
+
+    function showStatus(text, color = '#0c5460', bg = '#e8f4f8', border = '#0066cc') {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.style.color = color;
+      el.style.background = bg;
+      el.style.borderColor = border;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>
