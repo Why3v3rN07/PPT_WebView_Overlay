@@ -30,7 +30,7 @@ ipcMain.handle('set-setting', (_, key, value) => { settings[key] = value; saveSe
 // ---------------------------------------------------------------------------
 // Overlay pools
 //
-// persistPool  – Map<key, BrowserWindow>
+// persistPool – Map<key, BrowserWindow>
 //   Overlays that survive slide changes. Hidden when their slide isn't
 //   showing, re-shown (without reload) when it is.
 //   Key: "<url>|<left>|<top>|<width>|<height>"  (slide-point coords, stable)
@@ -197,7 +197,7 @@ function overlaysForWindow(win, slideSize, shapes) {
         existing.setBounds({ x: ox, y: oy, width: ow, height: oh });
         existing.show();
         existing.moveTop();
-        console.log(`    ↩ restored from persist pool`);
+        console.log(`      restored from persist pool`);
       } else {
         // First visit: create and cache.
         const w = createOverlayWindow(ox, oy, ow, oh, shape.url, interactive);

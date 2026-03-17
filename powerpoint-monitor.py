@@ -1,7 +1,8 @@
 import win32com.client
 import json
 import sys
-
+import time
+import signal
 
 # ---------------------------------------------------------------------------
 # PowerPoint state
@@ -16,7 +17,13 @@ import sys
 #
 # Alt-text flags ([persist], [reload], [static], [interactive]) are parsed
 # here and emitted as individual booleans on each shape object.
+#
+# Persistent-process mode: this script is spawned once and loops forever,
+# emitting one JSON line per iteration. main.js kills it on stop().
 # ---------------------------------------------------------------------------
+
+INTERVAL = 0.25  # seconds between checks
+
 
 def get_powerpoint_state():
     try:
@@ -93,7 +100,18 @@ def get_powerpoint_state():
         return {'error': str(e), 'inSlideshow': False}
 
 
+def emit(state):
+    print(json.dumps(state), flush=True)
+
+
+def main():
+    # Exit cleanly when the parent process closes our stdin or sends SIGTERM.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+
+    while True:
+        emit(get_powerpoint_state())
+        time.sleep(INTERVAL)
+
+
 if __name__ == '__main__':
-    state = get_powerpoint_state()
-    print(json.dumps(state))
-    sys.stdout.flush()
+    main()
