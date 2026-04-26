@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      user-select: none;
+      text-align: center;
+      padding: 4% 6%;
+      gap: 1.2vmin;
+    }
+
+    .greg {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 5vmin;
+      font-weight: 300;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+    }
+
+    /* When showing only Gregorian, make it larger */
+    .greg.solo { font-size: 8vmin; }
+
+    .divider {
+      width: 50%;
+      height: 1px;
+      background: rgba(255,255,255,0.2);
+      margin: 0.5vmin 0;
+    }
+
+    .heb {
+      font-family: 'Times New Roman', 'David', serif;
+      font-size: 7vmin;
+      font-weight: 400;
+      color: #fff;
+      direction: rtl;
+      letter-spacing: 0.02em;
+      line-height: 1.3;
+    }
+
+    /* When showing only Hebrew, make it larger */
+    .heb.solo { font-size: 10vmin; }
+
+    .parasha {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 3vmin;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.04em;
+      direction: rtl;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="greg" id="greg"></div>
+    <div class="divider" id="divider"></div>
+    <div class="heb" id="heb"></div>
+    <div class="parasha" id="parasha"></div>
+  </div>
+  <script>
+    const params   = new URLSearchParams(location.search);
+    const locParam = params.get('loc') || '';
+    // mode: 'both' | 'greg' | 'heb'  (default 'both')
+    const mode     = params.get('mode') || 'both';
+
+    const showGreg = mode !== 'heb';
+    const showHeb  = mode !== 'greg';
+
+    // Apply visibility and sizing based on mode
+    const gregEl    = document.getElementById('greg');
+    const dividerEl = document.getElementById('divider');
+    const hebEl     = document.getElementById('heb');
+
+    if (!showGreg) { gregEl.style.display = 'none'; dividerEl.style.display = 'none'; }
+    if (!showHeb)  { hebEl.style.display  = 'none'; dividerEl.style.display = 'none'; }
+    if (mode === 'greg') gregEl.classList.add('solo');
+    if (mode === 'heb')  hebEl.classList.add('solo');
+
+    // ---- Gregorian ----
+    function gregDate(date, tz) {
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      if (tz) opts.timeZone = tz;
+      return date.toLocaleDateString('en-US', opts);
+    }
+
+    // ---- Hebrew calendar ----
+    const HEB_MONTHS = ['','ניסן','אייר','סיון','תמוז','אב','אלול',
+                        'תשרי','חשון','כסלו','טבת','שבט','אדר','אדר א׳','אדר ב׳'];
+    const HEB_DIGITS = ['','א','ב','ג','ד','ה','ו','ז','ח','ט'];
+    const HEB_TENS   = ['','י','כ','ל','מ','נ','ס','ע','פ','צ'];
+
+    function toHebNum(n) {
+      let r = '';
+      const h = Math.floor(n / 100);
+      n %= 100;
+      if (h) r += ['','ק','ר','ש','ת','תק','תר','תש','תת','תתק'][h];
+      if (n === 15) r += 'טו';
+      else if (n === 16) r += 'טז';
+      else { r += HEB_TENS[Math.floor(n/10)]; r += HEB_DIGITS[n%10]; }
+      return r;
+    }
+
+    function gregToHeb(gY, gM, gD) {
+      const a = Math.floor((14-gM)/12), y = gY+4800-a, m = gM+12*a-3;
+      let jdn = gD + Math.floor((153*m+2)/5) + 365*y +
+                Math.floor(y/4) - Math.floor(y/100) + Math.floor(y/400) - 32045;
+
+      const isLeap = y => ((7*y+1)%19) < 7;
+      const elapsed = y => {
+        const mo = Math.floor((235*y-234)/19);
+        const pt = 12084 + 13753*mo;
+        let d = mo*29 + Math.floor(pt/25920);
+        if ((3*(d+1))%7 < 3) d++;
+        return d;
+      };
+      const diy = y => elapsed(y+1) - elapsed(y);
+      const epoch = y => {
+        const e = elapsed(y);
+        const dy = diy(y);
+        return 347997 + e + (dy % 10 < 4 ? 0 : [0,0,0,1,1,2,2,2,3,3,3,4,4,4][dy % 10]);
+      };
+      const dim = (m, y) => {
+        if ([1,3,5,7,9,11,13].includes(m)) return 30;
+        if (m===8) return diy(y)%10===5?30:29;
+        if (m===9) return diy(y)%10===3?29:30;
+        if (m===12) return isLeap(y)?30:29;
+        return 29;
+      };
+
+      let hY = Math.floor((jdn-347997)/365.25)+1;
+      while (epoch(hY+1) <= jdn) hY++;
+      let day = jdn - epoch(hY) + 1;
+      const order = isLeap(hY) ? [7,8,9,10,11,12,13,1,2,3,4,5,6]
+                                : [7,8,9,10,11,12,1,2,3,4,5,6];
+      let hM = order[0];
+      for (const mo of order) {
+        const d = dim(mo, hY);
+        if (day <= d) { hM = mo; break; }
+        day -= d;
+      }
+      return { day, month: hM, year: hY };
+    }
+
+    function formatHeb(d, m, y) {
+      return `${toHebNum(d)} ${HEB_MONTHS[m]||''} ה׳${toHebNum(y%1000)}`;
+    }
+
+    async function fetchParasha(gY, gM, gD) {
+      try {
+        const url = `https://www.hebcal.com/shabbat?cfg=json&m=50&b=18&M=on&a=off` +
+                    `&gy=${gY}&gm=${gM}&gd=${gD}`;
+        const r = await fetch(url);
+        const d = await r.json();
+        const p = d.items?.find(i => i.category === 'parashat');
+        return p ? ` ${p.hebrew || p.title}` : '';
+      } catch { return ''; }
+    }
+
+    // Resolve loc param → IANA timezone string using Open-Meteo geocoding
+    async function locToTz(loc) {
+      try {
+        const r = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(loc)}&count=1&language=en&format=json`
+        );
+        const d = await r.json();
+        if (!d.results?.length) return undefined;
+        // Open-Meteo returns timezone directly
+        return d.results[0].timezone || undefined;
+      } catch { return undefined; }
+    }
+
+    async function update() {
+      let tz = undefined;
+      if (locParam) tz = await locToTz(locParam);
+
+      const now  = new Date();
+      const opts = { year:'numeric', month:'numeric', day:'numeric' };
+      if (tz) opts.timeZone = tz;
+      const parts = Object.fromEntries(
+        new Intl.DateTimeFormat('en', opts).formatToParts(now).map(p => [p.type, parseInt(p.value)])
+      );
+      const gY = parts.year, gM = parts.month, gD = parts.day;
+
+      if (showGreg) gregEl.textContent = gregDate(now, tz);
+
+      if (showHeb) {
+        const { day, month, year } = gregToHeb(gY, gM, gD);
+        hebEl.textContent = formatHeb(day, month, year);
+        const parasha = await fetchParasha(gY, gM, gD);
+        document.getElementById('parasha').textContent = parasha;
+      }
+    }
+
+    update();
+
+    // Refresh at midnight (local or tz-adjusted)
+    function scheduleNextDay() {
+      const now = new Date();
+      const ms  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now;
+      setTimeout(() => { update(); scheduleNextDay(); }, ms);
+    }
+    scheduleNextDay();
+  </script>
+</body>
+</html>

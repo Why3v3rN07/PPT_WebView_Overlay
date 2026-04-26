@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; }
+
+    .clock {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      user-select: none;
+      text-align: center;
+      padding: 4% 6%;
+    }
+
+    /* vmin scales relative to the smaller dimension of the window,
+       so the clock looks right whether the shape is wide or tall */
+    .time {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 18vmin;
+      font-weight: 200;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .time .sec {
+      font-size: 10vmin;
+      font-weight: 300;
+      opacity: 0.65;
+      vertical-align: super;
+      margin-left: 0.05em;
+    }
+
+    .date-line {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 4.5vmin;
+      color: rgba(255,255,255,0.75);
+      margin-top: 2vmin;
+      letter-spacing: 0.03em;
+    }
+
+    .tz-label {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 3vmin;
+      color: rgba(255,255,255,0.4);
+      margin-top: 1vmin;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="clock">
+    <div class="time"><span id="hm"></span><span class="sec" id="sec"></span></div>
+    <div class="date-line" id="dateline"></div>
+    <div class="tz-label"  id="tzlabel"></div>
+  </div>
+  <script>
+    const params   = new URLSearchParams(location.search);
+    const tz       = params.get('tz') || undefined;
+    const showDate = params.get('showDate') !== '0';  // default true; pass showDate=0 to hide
+
+    const tzOpts  = tz ? { timeZone: tz } : {};
+    const fmtHM   = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', hour12: false, ...tzOpts });
+    const fmtSec  = new Intl.DateTimeFormat([], { second: '2-digit', ...tzOpts });
+    const fmtDate = new Intl.DateTimeFormat([], { weekday: 'long', day: 'numeric', month: 'long', ...tzOpts });
+
+    function tzAbbr(date) {
+      try {
+        const s = date.toLocaleTimeString('en', { timeZoneName: 'short', ...tzOpts });
+        return s.split(' ').pop();
+      } catch { return ''; }
+    }
+
+    const datelineEl = document.getElementById('dateline');
+    const tzlabelEl  = document.getElementById('tzlabel');
+    if (!showDate) { datelineEl.style.display = 'none'; tzlabelEl.style.display = 'none'; }
+
+    function tick() {
+      const now = new Date();
+      document.getElementById('hm').textContent  = fmtHM.format(now);
+      document.getElementById('sec').textContent = ':' + fmtSec.format(now);
+      if (showDate) {
+        datelineEl.textContent = fmtDate.format(now);
+        tzlabelEl.textContent  = tz ? tzAbbr(now) : '';
+      }
+    }
+
+    tick();
+    setTimeout(() => { tick(); setInterval(tick, 1000); }, 1000 - Date.now() % 1000);
+  </script>
+</body>
+</html>

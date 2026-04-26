@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen, protocol, net } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const PowerPointMonitor = require('./powerpoint-monitor');
@@ -28,6 +28,27 @@ ipcMain.handle('get-setting', (_, key)        => settings[key] ?? null);
 ipcMain.handle('set-setting', (_, key, value) => { settings[key] = value; saveSettings(); });
 
 // ---------------------------------------------------------------------------
+// widget:// custom protocol
+//
+// Resolves widget://clock  → widgets/clock.html
+//            widget://weather → widgets/weather.html
+//            widget://date    → widgets/date.html
+//
+// Query params from the URL are forwarded as-is so the widget HTML can
+// read them with new URLSearchParams(location.search).
+// ---------------------------------------------------------------------------
+
+app.whenReady().then(() => {
+  protocol.handle('widget', (request) => {
+    const url      = new URL(request.url);
+    const name     = url.hostname;   // "clock", "weather", "date"
+    const filePath = path.join(__dirname, 'widgets', `${name}.html`);
+    // Serve the local file; query params are available to the page via location.search
+    return net.fetch('file://' + filePath);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Overlay pools
 //
 // persistPool – Map<key, BrowserWindow>
@@ -42,20 +63,15 @@ ipcMain.handle('set-setting', (_, key, value) => { settings[key] = value; saveSe
 const persistPool  = new Map();   // key → BrowserWindow
 let reloadWindows  = [];          // closed on each slide change
 
+// Pending transition timer — cancelled if the user advances before it fires.
+let transitionTimer = null;
+
 function persistKey(shape) {
-  // Use raw slide-point coords as the key — they never change between visits.
   return `${shape.url}|${shape.left}|${shape.top}|${shape.width}|${shape.height}`;
 }
 
 // ---------------------------------------------------------------------------
 // Coordinate conversion: PPT window pts → Electron logical pixels
-//
-// PPT COM gives window geometry in "points" whose numeric value equals
-// (logical_pixels * primaryDPI / 96 / scaleFactor) — effectively opaque.
-// We recover logical pixels empirically: try every Electron display, compute
-// factor = display.bounds.width / win.widthPts, check the height error.
-// The display with the smallest height error is the one the window is on,
-// and its factor converts all four coordinates correctly.
 // ---------------------------------------------------------------------------
 
 function pptWindowToLogical(win) {
@@ -101,8 +117,64 @@ function createOverlayWindow(x, y, width, height, url, interactive) {
 }
 
 // ---------------------------------------------------------------------------
+// Widget URL resolution
+//
+// Appends settings and per-shape overrides as query params so the widget
+// HTML can access them without needing IPC.
+//
+// widget://clock  → widget://clock?tz=America/New_York
+// widget://weather → widget://weather?loc=London&units=metric
+// widget://date   → widget://date?loc=Jerusalem
+// ---------------------------------------------------------------------------
+
+function resolveWidgetUrl(shape) {
+  const base = shape.url;
+  if (!base.startsWith('widget://')) return base;
+
+  const params = new URLSearchParams();
+  const name   = base.replace('widget://', '');
+
+  if (name === 'clock') {
+    // Timezone: per-shape override → global default → system (omit param)
+    const tz = shape.widgetTz || settings.widgetClockTz || '';
+    if (tz) params.set('tz', tz);
+
+    // showDate: '1' (default) or '0'
+    const showDate = settings.widgetClockShowDate ?? '1';
+    if (showDate === '0') params.set('showDate', '0');
+  }
+
+  if (name === 'weather') {
+    // Location: per-shape → global → omit (widget falls back to IP geolocation)
+    const loc = shape.widgetLoc || settings.widgetWeatherLoc || '';
+    if (loc) params.set('loc', loc);
+    const units = settings.widgetWeatherUnits || 'metric';
+    params.set('units', units);
+  }
+
+  if (name === 'date') {
+    // Date uses its own location setting (widgetDateLoc) separate from weather
+    const loc = shape.widgetLoc || settings.widgetDateLoc || '';
+    if (loc) params.set('loc', loc);
+    // mode param from shape (e.g. [DATE mode=heb]) overrides global setting
+    const mode = shape.widgetMode || settings.widgetDateMode || 'both';
+    if (mode !== 'both') params.set('mode', mode);
+  }
+
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+// ---------------------------------------------------------------------------
 // Show / hide / close helpers
 // ---------------------------------------------------------------------------
+
+function cancelTransitionTimer() {
+  if (transitionTimer !== null) {
+    clearTimeout(transitionTimer);
+    transitionTimer = null;
+  }
+}
 
 function closeReloadWindows() {
   reloadWindows.forEach(w => { if (!w.isDestroyed()) w.close(); });
@@ -114,6 +186,7 @@ function hideAllPersisted() {
 }
 
 function closeAllOverlays() {
+  cancelTransitionTimer();
   closeReloadWindows();
   persistPool.forEach(w => { if (!w.isDestroyed()) w.close(); });
   persistPool.clear();
@@ -167,7 +240,6 @@ function overlaysForWindow(win, slideSize, shapes) {
   console.log(`  logical (${logical.left.toFixed(0)},${logical.top.toFixed(0)}) ${logical.width.toFixed(0)}x${logical.height.toFixed(0)}`);
   console.log(`  render  (${renderLeft.toFixed(0)},${renderTop.toFixed(0)}) ${renderW.toFixed(0)}x${renderH.toFixed(0)}`);
 
-  // Track which persist keys are active on this slide so we can hide the rest.
   const activeKeys = new Set();
 
   for (const shape of shapes) {
@@ -176,7 +248,6 @@ function overlaysForWindow(win, slideSize, shapes) {
     const ow = Math.round(shape.width  * scaleX);
     const oh = Math.round(shape.height * scaleY);
 
-    // Resolve flags: per-shape overrides > global default
     const persist = shape.flagReload  ? false
                   : shape.flagPersist ? true
                   : (settings.persistByDefault ?? false);
@@ -185,7 +256,10 @@ function overlaysForWindow(win, slideSize, shapes) {
                       : shape.flagInteractive ? true
                       : (settings.interactiveByDefault ?? true);
 
-    console.log(`  shape (${ox},${oy}) ${ow}x${oh}  persist=${persist}  interactive=${interactive}  ${shape.url}`);
+    // Resolve widget:// URLs to include settings as query params
+    const url = resolveWidgetUrl(shape);
+
+    console.log(`  shape (${ox},${oy}) ${ow}x${oh}  persist=${persist}  interactive=${interactive}  ${url}`);
 
     if (persist) {
       const key = persistKey(shape);
@@ -193,24 +267,21 @@ function overlaysForWindow(win, slideSize, shapes) {
       const existing = persistPool.get(key);
 
       if (existing && !existing.isDestroyed()) {
-        // Re-show without reloading; reposition in case DPI changed.
         existing.setBounds({ x: ox, y: oy, width: ow, height: oh });
         existing.show();
         existing.moveTop();
         console.log(`      restored from persist pool`);
       } else {
-        // First visit: create and cache.
-        const w = createOverlayWindow(ox, oy, ow, oh, shape.url, interactive);
+        const w = createOverlayWindow(ox, oy, ow, oh, url, interactive);
         persistPool.set(key, w);
         w.on('closed', () => persistPool.delete(key));
       }
     } else {
-      // Reload overlay: just create it; it will be closed on next slide change.
-      reloadWindows.push(createOverlayWindow(ox, oy, ow, oh, shape.url, interactive));
+      reloadWindows.push(createOverlayWindow(ox, oy, ow, oh, url, interactive));
     }
   }
 
-  // Hide persisted overlays that belong to OTHER slides.
+  // Hide persisted overlays that belong to other slides.
   persistPool.forEach((w, key) => {
     if (!activeKeys.has(key) && !w.isDestroyed()) w.hide();
   });
@@ -218,33 +289,56 @@ function overlaysForWindow(win, slideSize, shapes) {
 
 // ---------------------------------------------------------------------------
 // Slide change handler
+//
+// Transition timing strategy:
+//   1. A slide change is detected immediately when currentSlide increments.
+//      At that moment the transition animation is just starting.
+//   2. We immediately hide/close all current overlays so they don't sit on
+//      top of the animation.
+//   3. We wait transitionDuration seconds, then place the new overlays.
+//   4. If another slide change fires before the timer expires, we cancel
+//      the pending placement and start fresh — this handles rapid advances.
+//
+// A small TRANSITION_BUFFER_MS is added to ensure the animation has truly
+// finished before overlays appear (accounts for COM polling jitter).
 // ---------------------------------------------------------------------------
 
+const TRANSITION_BUFFER_MS = 150;
+
 async function handleSlideChange(slideIndex, state) {
-  // Always close reload overlays from the previous slide.
+  // Cancel any pending transition timer from a previous slide change.
+  cancelTransitionTimer();
+
+  // Immediately hide / close current overlays.
   closeReloadWindows();
+  hideAllPersisted();
 
   if (slideIndex === -1 || !state) { closeAllOverlays(); return; }
-  if (state.isEndScreen)           { hideAllPersisted(); return; }
+  if (state.isEndScreen)           { return; /* already hidden above */ }
 
   if (!state.shapes || state.shapes.length === 0) {
-    hideAllPersisted();
-    console.log(`\n=== SLIDE ${slideIndex} — no [WEBVIEW] shapes ===`);
+    console.log(`\n=== SLIDE ${slideIndex} — no overlay shapes ===`);
     return;
   }
   if (!state.windows || state.windows.length === 0) {
     console.error('No window info'); return;
   }
 
-  console.log(`\n=== SLIDE ${slideIndex} ===`);
+  const delayMs = Math.round((state.transitionDuration || 0) * 1000) + TRANSITION_BUFFER_MS;
+  console.log(`\n=== SLIDE ${slideIndex}  (placing overlays in ${delayMs}ms) ===`);
 
-  for (let i = 0; i < state.windows.length; i++) {
-    const label = state.windows[i].isPresenterView ? 'presenter' : 'audience';
-    console.log(`  [${label}]`);
-    overlaysForWindow(state.windows[i], state.slideSize, state.shapes);
-  }
+  transitionTimer = setTimeout(() => {
+    transitionTimer = null;
+    console.log(`  Placing overlays for slide ${slideIndex}`);
 
-  console.log('===================\n');
+    for (let i = 0; i < state.windows.length; i++) {
+      const label = state.windows[i].isPresenterView ? 'presenter' : 'audience';
+      console.log(`  [${label}]`);
+      overlaysForWindow(state.windows[i], state.slideSize, state.shapes);
+    }
+
+    console.log('===================\n');
+  }, delayMs);
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +347,7 @@ async function handleSlideChange(slideIndex, state) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 680, height: 700,
+    width: 680, height: 780,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      user-select: none;
+      text-align: center;
+      padding: 3% 6%;
+      gap: 0.8vmin;
+    }
+
+    .location {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 3.5vmin;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .icon { font-size: 14vmin; line-height: 1; }
+
+    .temp {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 16vmin;
+      font-weight: 200;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .temp .unit {
+      font-size: 8vmin;
+      font-weight: 300;
+      opacity: 0.7;
+      vertical-align: super;
+    }
+
+    .temp-both {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 8vmin;
+      font-weight: 200;
+      color: #fff;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .desc {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 3.5vmin;
+      color: rgba(255,255,255,0.75);
+      text-transform: capitalize;
+    }
+
+    .details {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 2.8vmin;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.03em;
+    }
+
+    .msg {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      font-size: 3.5vmin;
+      color: rgba(255,200,200,0.9);
+      padding: 0 8%;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="msg">Loading…</div>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const locParam = params.get('loc') || '';
+    // units: 'metric' | 'imperial' | 'both'
+    const units = params.get('units') || 'metric';
+
+    function unitLabel(c, f) {
+      if (units === 'both')     return `${c}°C / ${f}°F`;
+      if (units === 'imperial') return `${f}<span class="unit">°F</span>`;
+      return `${c}<span class="unit">°C</span>`;
+    }
+
+    function wmoInfo(code) {
+      const map = {
+        0:{desc:'Clear sky',icon:'☀️'},1:{desc:'Mainly clear',icon:'🌤'},
+        2:{desc:'Partly cloudy',icon:'⛅'},3:{desc:'Overcast',icon:'☁️'},
+        45:{desc:'Foggy',icon:'🌫'},48:{desc:'Icy fog',icon:'🌫'},
+        51:{desc:'Light drizzle',icon:'🌦'},53:{desc:'Drizzle',icon:'🌦'},
+        55:{desc:'Heavy drizzle',icon:'🌧'},61:{desc:'Light rain',icon:'🌧'},
+        63:{desc:'Rain',icon:'🌧'},65:{desc:'Heavy rain',icon:'🌧'},
+        71:{desc:'Light snow',icon:'🌨'},73:{desc:'Snow',icon:'❄️'},
+        75:{desc:'Heavy snow',icon:'❄️'},77:{desc:'Snow grains',icon:'❄️'},
+        80:{desc:'Light showers',icon:'🌦'},81:{desc:'Showers',icon:'🌧'},
+        82:{desc:'Violent showers',icon:'🌧'},85:{desc:'Snow showers',icon:'🌨'},
+        86:{desc:'Heavy snow showers',icon:'❄️'},95:{desc:'Thunderstorm',icon:'⛈'},
+        96:{desc:'Thunderstorm w/ hail',icon:'⛈'},99:{desc:'Thunderstorm w/ hail',icon:'⛈'},
+      };
+      return map[code] || {desc:'Unknown',icon:'🌡'};
+    }
+
+    function showMsg(html) {
+      document.getElementById('card').innerHTML = `<div class="msg">${html}</div>`;
+    }
+
+    async function geolocate() {
+      // If loc param given, geocode by name. Otherwise fall back to IP geolocation.
+      if (locParam) {
+        const r = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locParam)}&count=1&language=en&format=json`
+        );
+        const d = await r.json();
+        if (!d.results?.length) throw new Error(`Location not found: ${locParam}`);
+        const { latitude, longitude, name, country_code } = d.results[0];
+        return { latitude, longitude, label: country_code ? `${name}, ${country_code.toUpperCase()}` : name };
+      } else {
+        // IP-based geolocation — free, no key needed
+        const r = await fetch('https://ipapi.co/json/');
+        const d = await r.json();
+        if (!d.latitude) throw new Error('Could not determine location');
+        return { latitude: d.latitude, longitude: d.longitude, label: d.city || d.region || 'Here' };
+      }
+    }
+
+    async function fetchWeather() {
+      try {
+        const { latitude, longitude, label } = await geolocate();
+
+        // Always fetch both celsius and fahrenheit so we can show either/both
+        const r = await fetch(
+          `https://api.open-meteo.com/v1/forecast` +
+          `?latitude=${latitude}&longitude=${longitude}` +
+          `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code` +
+          `&temperature_unit=celsius&timezone=auto`
+        );
+        const d   = await r.json();
+        const cur = d.current;
+
+        const { desc, icon } = wmoInfo(cur.weather_code);
+        const c      = Math.round(cur.temperature_2m);
+        const cf     = Math.round(cur.apparent_temperature);
+        const f      = Math.round(c * 9/5 + 32);
+        const ff     = Math.round(cf * 9/5 + 32);
+        const humid  = cur.relative_humidity_2m;
+
+        let tempHtml, feelsStr;
+        if (units === 'both') {
+          tempHtml  = `<div class="temp-both">${c}°C / ${f}°F</div>`;
+          feelsStr  = `Feels ${cf}°C / ${ff}°F`;
+        } else if (units === 'imperial') {
+          tempHtml  = `<div class="temp">${f}<span class="unit">°F</span></div>`;
+          feelsStr  = `Feels ${ff}°F`;
+        } else {
+          tempHtml  = `<div class="temp">${c}<span class="unit">°C</span></div>`;
+          feelsStr  = `Feels ${cf}°C`;
+        }
+
+        document.getElementById('card').innerHTML = `
+          <div class="location">${label}</div>
+          <div class="icon">${icon}</div>
+          ${tempHtml}
+          <div class="desc">${desc}</div>
+          <div class="details">${feelsStr} · ${humid}% humidity</div>
+        `;
+      } catch(e) {
+        showMsg(e.message || 'Weather unavailable');
+        console.error(e);
+      }
+    }
+
+    fetchWeather();
+    setInterval(fetchWeather, 10 * 60 * 1000);
+  </script>
+</body>
+</html>

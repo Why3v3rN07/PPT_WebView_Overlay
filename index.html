@@ -1,290 +1,503 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>PowerPoint Web Viewer</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      padding: 20px;
-      margin: 0;
-      background: #f5f5f5;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h1 { margin-top: 0; color: #333; }
-    h2 { margin-top: 0; color: #444; font-size: 16px; }
-    .section {
-      margin: 20px 0;
-      padding: 20px;
-      background: #f9f9f9;
-      border-radius: 4px;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-      color: #555;
-    }
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      background: #0066cc;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-right: 10px;
-    }
-    button:hover { background: #0052a3; }
+    <meta charset="UTF-8">
+    <title>PowerPoint Web Viewer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            margin: 0;
+            background: #f5f5f5;
+        }
 
-    /* Toggle switch */
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .toggle-row label {
-      margin: 0;
-      font-weight: 500;
-      color: #555;
-      cursor: pointer;
-    }
-    .toggle-row .description {
-      font-size: 13px;
-      color: #888;
-      margin: 0;
-      font-weight: normal;
-    }
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-      flex-shrink: 0;
-    }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #ccc;
-      border-radius: 24px;
-      transition: 0.2s;
-    }
-    .slider:before {
-      content: '';
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 0.2s;
-    }
-    input:checked + .slider { background: #0066cc; }
-    input:checked + .slider:before { transform: translateX(20px); }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
-    .syntax-box {
-      background: #f0f4f8;
-      border: 1px solid #d0dae5;
-      border-radius: 4px;
-      padding: 10px 14px;
-      font-family: monospace;
-      font-size: 13px;
-      color: #333;
-      margin-top: 8px;
-    }
-    .syntax-box .comment {
-      color: #888;
-      font-style: italic;
-    }
+        h1 {
+            margin-top: 0;
+            color: #333;
+        }
 
-    .status {
-      margin-top: 20px;
-      padding: 10px;
-      background: #e8f4f8;
-      border-left: 4px solid #0066cc;
-      border-radius: 4px;
-      display: none;
-    }
-    .status.show { display: block; }
-  </style>
+        h2 {
+            margin-top: 0;
+            color: #444;
+            font-size: 16px;
+        }
+
+        h3 {
+            margin: 16px 0 8px;
+            color: #555;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background: #0052a3;
+        }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .toggle-row label {
+            margin: 0;
+            font-weight: 500;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .toggle-row .description {
+            font-size: 13px;
+            color: #888;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #ccc;
+            border-radius: 24px;
+            transition: 0.2s;
+        }
+
+        .slider:before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        input:checked + .slider {
+            background: #0066cc;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Radio group */
+        .radio-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0;
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 400;
+            color: #444;
+            background: white;
+            transition: border-color 0.15s, background 0.15s;
+            font-size: 13px;
+        }
+
+        .radio-group input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .radio-group label:has(input:checked) {
+            border-color: #0066cc;
+            background: #e8f0fb;
+            color: #0052a3;
+            font-weight: 500;
+        }
+
+        .syntax-box {
+            background: #f0f4f8;
+            border: 1px solid #d0dae5;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #333;
+            margin-top: 8px;
+        }
+
+        .syntax-box .comment {
+            color: #888;
+            font-style: italic;
+        }
+
+        .field-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .field-row > div {
+            flex: 1;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin: -6px 0 10px;
+        }
+
+        .widget-subsection {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #eee;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e8f4f8;
+            border-left: 4px solid #0066cc;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
+<div class="container">
     <h1>PowerPoint Web Viewer</h1>
 
     <!-- Monitoring -->
     <div class="section">
-      <h2>PowerPoint Monitoring</h2>
-      <p>Monitor PowerPoint presentations and automatically show web overlays.</p>
-      <button onclick="startMonitoring()" style="background:#28a745;">Start Monitoring</button>
-      <button onclick="stopMonitoring()" style="background:#dc3545;">Stop Monitoring</button>
+        <h2>PowerPoint Monitoring</h2>
+        <p>Monitor PowerPoint presentations and automatically show web overlays.</p>
+        <button onclick="startMonitoring()" style="background:#28a745;">Start Monitoring</button>
+        <button onclick="stopMonitoring()" style="background:#dc3545;">Stop Monitoring</button>
     </div>
 
     <!-- Overlay behaviour -->
     <div class="section">
-      <h2>Overlay Behaviour</h2>
+        <h2>Overlay Behaviour</h2>
 
-      <div class="toggle-row">
-        <label class="switch">
-          <input type="checkbox" id="persistToggle" onchange="savePersistSetting()">
-          <span class="slider"></span>
-        </label>
-        <div>
-          <label for="persistToggle">Persist overlay state by default</label>
-          <p class="description">
-            When on, overlay pages keep their scroll position and state if
-            you revisit a slide. When off, the page reloads fresh each time.
-          </p>
+        <div class="toggle-row">
+            <label class="switch">
+                <input type="checkbox" id="persistToggle" onchange="savePersistSetting()">
+                <span class="slider"></span>
+            </label>
+            <div>
+                <label for="persistToggle">Persist overlay state by default</label>
+                <p class="description">When on, overlay pages keep the scroll position and state they were in the last
+                    time they were shown. <br>
+                    When off, the pages are reloaded each time they're shown.</p>
+            </div>
         </div>
-      </div>
 
-      <div class="toggle-row" style="margin-top:16px;">
-        <label class="switch">
-          <input type="checkbox" id="interactiveToggle" onchange="saveInteractiveSetting()">
-          <span class="slider"></span>
-        </label>
-        <div>
-          <label for="interactiveToggle">Overlays interactive by default</label>
-          <p class="description">
-            When on, mouse clicks go to the overlay. When off, clicks pass
-            through to PowerPoint (useful for display-only content).
-          </p>
+        <div class="toggle-row" style="margin-top:16px;">
+            <label class="switch">
+                <input type="checkbox" id="interactiveToggle" onchange="saveInteractiveSetting()">
+                <span class="slider"></span>
+            </label>
+            <div>
+                <label for="interactiveToggle">Overlays interactive by default</label>
+                <p class="description">When on, mouse clicks go to the overlay. <br>
+                    When off, clicks pass through to PowerPoint.</p>
+            </div>
         </div>
-      </div>
 
-      <p style="margin:14px 0 6px; font-size:13px; color:#555;">
-        Override either default per shape using flags in the alt text:
-      </p>
-      <div class="syntax-box">
-        [WEBVIEW]https://example.com [persist]<br>
-        <span class="comment">   ↑ always persist this shape</span><br><br>
-        [WEBVIEW]https://example.com [reload]<br>
-        <span class="comment">   ↑ always reload this shape</span><br><br>
-        [WEBVIEW]https://example.com [static]<br>
-        <span class="comment">   ↑ clicks pass through to PowerPoint</span><br><br>
-        [WEBVIEW]https://example.com [interactive]<br>
-        <span class="comment">   ↑ always capture clicks</span><br><br>
-        [WEBVIEW]https://example.com [persist] [static]<br>
-        <span class="comment">   ↑ flags can be combined</span>
-      </div>
+        <p style="margin:14px 0 6px; font-size:13px; color:#555;">Override per shape using flags in the alt text:</p>
+        <div class="syntax-box">
+            [WEBVIEW]https://example.com [persist]<br>
+            <span class="comment">   ↑ always persist this shape</span><br><br>
+            [WEBVIEW]https://example.com [reload] [static]<br>
+            <span class="comment">   ↑ always reload; clicks pass through</span>
+        </div>
+    </div>
+
+    <!-- Widgets -->
+    <div class="section">
+        <h2>Built-in Widgets</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:4px;">
+            Add widgets to slides using alt text tags. Settings below are defaults — override per shape with inline
+            parameters.
+        </p>
+
+        <!-- Clock -->
+        <div class="widget-subsection">
+            <h3>🕐 Clock</h3>
+
+            <label>Default timezone</label>
+            <input type="text" id="widgetClockTz"
+                   placeholder="e.g. Asia/Jerusalem, America/New_York, Europe/London"
+                   oninput="saveWidgetSetting('widgetClockTz', this.value)">
+            <p class="hint">Use IANA timezone names. Leave blank to use the system clock.</p>
+
+            <label>Show date below time</label>
+            <div class="radio-group" id="clockShowDateGroup">
+                <label><input type="radio" name="clockShowDate" value="1"
+                              onchange="saveWidgetSetting('widgetClockShowDate', '1')"> Yes</label>
+                <label><input type="radio" name="clockShowDate" value="0"
+                              onchange="saveWidgetSetting('widgetClockShowDate', '0')"> No</label>
+            </div>
+        </div>
+
+        <!-- Weather -->
+        <div class="widget-subsection">
+            <h3>🌤 Weather</h3>
+
+            <label>Default location</label>
+            <input type="text" id="widgetWeatherLoc"
+                   placeholder="e.g. Jerusalem, London, New York"
+                   oninput="saveWidgetSetting('widgetWeatherLoc', this.value)">
+            <p class="hint">City name. Leave blank to auto-detect from your IP address.</p>
+
+            <label>Temperature units</label>
+            <div class="radio-group" id="weatherUnitsGroup">
+                <label><input type="radio" name="weatherUnits" value="metric"
+                              onchange="saveWidgetSetting('widgetWeatherUnits', 'metric')"> Celsius (°C)</label>
+                <label><input type="radio" name="weatherUnits" value="imperial"
+                              onchange="saveWidgetSetting('widgetWeatherUnits', 'imperial')"> Fahrenheit (°F)</label>
+                <label><input type="radio" name="weatherUnits" value="both"
+                              onchange="saveWidgetSetting('widgetWeatherUnits', 'both')"> Both</label>
+            </div>
+        </div>
+
+        <!-- Date -->
+        <div class="widget-subsection">
+            <h3>📅 Date</h3>
+
+            <label>Default location (for timezone)</label>
+            <input type="text" id="widgetDateLoc"
+                   placeholder="e.g. Jerusalem, New York"
+                   oninput="saveWidgetSetting('widgetDateLoc', this.value)">
+            <p class="hint">Used to show the correct date in that timezone. Leave blank for local date.</p>
+
+            <label>Display mode</label>
+            <div class="radio-group" id="dateModeGroup">
+                <label><input type="radio" name="dateMode" value="both"
+                              onchange="saveWidgetSetting('widgetDateMode', 'both')"> Hebrew + English</label>
+                <label><input type="radio" name="dateMode" value="heb"
+                              onchange="saveWidgetSetting('widgetDateMode', 'heb')"> Hebrew only</label>
+                <label><input type="radio" name="dateMode" value="greg"
+                              onchange="saveWidgetSetting('widgetDateMode', 'greg')"> English only</label>
+            </div>
+        </div>
+
+        <!-- Syntax reference -->
+        <div style="margin-top:18px;">
+            <p style="font-size:13px; color:#555; margin-bottom:6px;">Alt text syntax:</p>
+            <div class="syntax-box">
+                [CLOCK]<br>
+                <span class="comment">   ↑ uses default timezone &amp; date setting</span><br><br>
+                [CLOCK tz=America/New_York]<br>
+                <span class="comment">   ↑ explicit timezone override</span><br><br>
+                [WEATHER]<br>
+                <span class="comment">   ↑ auto-detects location from IP</span><br><br>
+                [WEATHER loc=London]<br>
+                <span class="comment">   ↑ specific city</span><br><br>
+                [DATE]<br>
+                <span class="comment">   ↑ uses default mode &amp; location</span><br><br>
+                [DATE loc=Jerusalem mode=heb]<br>
+                <span class="comment">   ↑ Hebrew only, Jerusalem timezone</span><br><br>
+                [CLOCK tz=Asia/Tokyo] [static]<br>
+                <span class="comment">   ↑ combine widget params with overlay flags</span>
+            </div>
+        </div>
     </div>
 
     <!-- Test overlay -->
     <div class="section">
-      <h2>Test Overlay</h2>
-      <p>Use this to test if overlay windows work on your system.</p>
-      <label>URL:</label>
-      <input type="text" id="testUrl" value="https://www.example.com">
-      <label>X Position:</label>
-      <input type="number" id="testX" value="100">
-      <label>Y Position:</label>
-      <input type="number" id="testY" value="100">
-      <label>Width:</label>
-      <input type="number" id="testWidth" value="800">
-      <label>Height:</label>
-      <input type="number" id="testHeight" value="600">
-      <button onclick="testOverlay()">Create Test Overlay</button>
-      <button onclick="closeOverlays()" style="background:#dc3545;">Close All Overlays</button>
+        <h2>Test Overlay</h2>
+        <p>Use this to test if overlay windows work on your system.</p>
+        <label>URL:</label>
+        <input type="text" id="testUrl" value="https://www.example.com">
+        <div class="field-row">
+            <div><label>X Position:</label><input type="number" id="testX" value="100"></div>
+            <div><label>Y Position:</label><input type="number" id="testY" value="100"></div>
+        </div>
+        <div class="field-row">
+            <div><label>Width:</label><input type="number" id="testWidth" value="800"></div>
+            <div><label>Height:</label><input type="number" id="testHeight" value="600"></div>
+        </div>
+        <button onclick="testOverlay()">Create Test Overlay</button>
+        <button onclick="closeOverlays()" style="background:#dc3545;">Close All Overlays</button>
     </div>
 
     <!-- Shortcuts -->
     <div class="section">
-      <h2>Keyboard Shortcuts</h2>
-      <ul>
-        <li><strong>Ctrl+Shift+Q</strong> — Close all overlay windows</li>
-      </ul>
+        <h2>Keyboard Shortcuts</h2>
+        <ul>
+            <li><strong>Ctrl+Shift+Q</strong> — Close all overlay windows</li>
+        </ul>
     </div>
 
     <!-- Instructions -->
     <div class="section">
-      <h2>Instructions</h2>
-      <ol>
-        <li>In PowerPoint, insert a rectangle shape where you want web content</li>
-        <li>Right-click the shape → Edit Alt Text</li>
-        <li>Type: <code>[WEBVIEW]https://your-url.com</code></li>
-        <li>Optionally add <code>[persist]</code> or <code>[reload]</code> after the URL</li>
-        <li>Start your slideshow and click <strong>Start Monitoring</strong></li>
-      </ol>
+        <h2>Instructions</h2>
+        <ol>
+            <li>In PowerPoint, insert a rectangle shape where you want web content</li>
+            <li>Right-click the shape → Edit Alt Text</li>
+            <li>Type: <code>[WEBVIEW]https://your-url.com</code> or a widget tag like <code>[CLOCK]</code></li>
+            <li>Optionally add flags like <code>[persist]</code>, <code>[static]</code>, or parameters like
+                <code>tz=</code></li>
+            <li>Start your slideshow and click <strong>Start Monitoring</strong></li>
+        </ol>
     </div>
 
     <div class="status" id="status">Ready.</div>
-  </div>
+</div>
 
-  <script>
-    // Load saved setting on startup
+<script>
     window.addEventListener('DOMContentLoaded', async () => {
-      const persist = await window.electronAPI.getSetting('persistByDefault');
-      document.getElementById('persistToggle').checked = !!persist;
-      const interactive = await window.electronAPI.getSetting('interactiveByDefault');
-      document.getElementById('interactiveToggle').checked = interactive !== false;
+        // Overlay toggles
+        const persist = await window.electronAPI.getSetting('persistByDefault');
+        document.getElementById('persistToggle').checked = !!persist;
+
+        const interactive = await window.electronAPI.getSetting('interactiveByDefault');
+        document.getElementById('interactiveToggle').checked = interactive !== false;
+
+        // Clock
+        const clockTz = await window.electronAPI.getSetting('widgetClockTz');
+        if (clockTz) document.getElementById('widgetClockTz').value = clockTz;
+
+        const clockShowDate = await window.electronAPI.getSetting('widgetClockShowDate');
+        // default: show date (value '1')
+        const showDateVal = (clockShowDate === '0') ? '0' : '1';
+        document.querySelector(`input[name="clockShowDate"][value="${showDateVal}"]`).checked = true;
+
+        // Weather
+        const weatherLoc = await window.electronAPI.getSetting('widgetWeatherLoc');
+        if (weatherLoc) document.getElementById('widgetWeatherLoc').value = weatherLoc;
+
+        const weatherUnits = await window.electronAPI.getSetting('widgetWeatherUnits') || 'metric';
+        document.querySelector(`input[name="weatherUnits"][value="${weatherUnits}"]`).checked = true;
+
+        // Date
+        const dateLoc = await window.electronAPI.getSetting('widgetDateLoc');
+        if (dateLoc) document.getElementById('widgetDateLoc').value = dateLoc;
+
+        const dateMode = await window.electronAPI.getSetting('widgetDateMode') || 'both';
+        document.querySelector(`input[name="dateMode"][value="${dateMode}"]`).checked = true;
     });
 
     function savePersistSetting() {
-      const val = document.getElementById('persistToggle').checked;
-      window.electronAPI.setSetting('persistByDefault', val);
-      showStatus(val ? 'Default: persist overlay state' : 'Default: reload overlay each visit', '#555', '#eee');
+        const val = document.getElementById('persistToggle').checked;
+        window.electronAPI.setSetting('persistByDefault', val);
+        showStatus(val ? 'Default: persist overlay state' : 'Default: reload overlay each visit', '#555', '#eee');
     }
 
     function saveInteractiveSetting() {
-      const val = document.getElementById('interactiveToggle').checked;
-      window.electronAPI.setSetting('interactiveByDefault', val);
-      showStatus(val ? 'Default: overlays are interactive' : 'Default: overlays are static (click-through)', '#555', '#eee');
+        const val = document.getElementById('interactiveToggle').checked;
+        window.electronAPI.setSetting('interactiveByDefault', val);
+        showStatus(val ? 'Default: overlays are interactive' : 'Default: overlays are static (click-through)', '#555', '#eee');
+    }
+
+    function saveWidgetSetting(key, value) {
+        window.electronAPI.setSetting(key, value);
     }
 
     function testOverlay() {
-      window.electronAPI.testOverlay({
-        url:    document.getElementById('testUrl').value,
-        x:      parseInt(document.getElementById('testX').value),
-        y:      parseInt(document.getElementById('testY').value),
-        width:  parseInt(document.getElementById('testWidth').value),
-        height: parseInt(document.getElementById('testHeight').value)
-      });
-      showStatus('Test overlay created! Check your screen.');
+        window.electronAPI.testOverlay({
+            url: document.getElementById('testUrl').value,
+            x: parseInt(document.getElementById('testX').value),
+            y: parseInt(document.getElementById('testY').value),
+            width: parseInt(document.getElementById('testWidth').value),
+            height: parseInt(document.getElementById('testHeight').value)
+        });
+        showStatus('Test overlay created! Check your screen.');
     }
 
     function closeOverlays() {
-      window.electronAPI.closeOverlays();
-      showStatus('All overlays closed!', '#721c24', '#f8d7da', '#dc3545');
+        window.electronAPI.closeOverlays();
+        showStatus('All overlays closed!', '#721c24', '#f8d7da', '#dc3545');
     }
 
     function startMonitoring() {
-      window.electronAPI.startMonitoring();
-      showStatus('Started monitoring PowerPoint!', '#155724', '#d4edda', '#28a745');
+        window.electronAPI.startMonitoring();
+        showStatus('Started monitoring PowerPoint!', '#155724', '#d4edda', '#28a745');
     }
 
     function stopMonitoring() {
-      window.electronAPI.stopMonitoring();
-      showStatus('Stopped monitoring PowerPoint!', '#721c24', '#f8d7da', '#dc3545');
+        window.electronAPI.stopMonitoring();
+        showStatus('Stopped monitoring PowerPoint!', '#721c24', '#f8d7da', '#dc3545');
     }
 
     function showStatus(text, color = '#0c5460', bg = '#e8f4f8', border = '#0066cc') {
-      const el = document.getElementById('status');
-      el.textContent = text;
-      el.style.color = color;
-      el.style.background = bg;
-      el.style.borderColor = border;
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 3000);
+        const el = document.getElementById('status');
+        el.textContent = text;
+        el.style.color = color;
+        el.style.background = bg;
+        el.style.borderColor = border;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 3000);
     }
-  </script>
+</script>
 </body>
 </html>
