@@ -411,6 +411,17 @@
         </ol>
     </div>
 
+    <!-- Troubleshooting -->
+    <div>
+        <h2>Troubleshooting</h2>
+        <ol>
+            <li>If your presentation stops running when you click off it, make sure you're in window mode. (In PowerPoint, go to Slide Show -> Set Up Slide Show -> Show Type -> Browsed by an Individual (Windowed))</li>
+            <li>If you're in window mode and the webview windows appear in the wrong locations, try switching to compatibility mode. (In PowerPoint, File -> Options -> User Interface Options -> When using multiple displays, optimize for compatibility)</li>
+            <li>Using long/fancy transitions to leave a slide with a webview is not recommended. The app doesn't consider the slide changed until the transition ends, so any overlays from the first slide will stay up throughout the transition. </li>
+            <li>Similarly, animations on the overlay shapes will not work. That is, the shapes will move, but the overlay windows will not. </li>
+        </ol>
+    </div>
+
     <div class="status" id="status">Ready.</div>
 </div>
 
