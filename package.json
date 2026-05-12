@@ -1,11 +1,13 @@
 {
-  "name": "ppt-webviewer",
+  "name": "ppt_webviewer",
   "version": "1.0.0",
   "description": "Overlay web content on PowerPoint presentations",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --dir"
   },
   "keywords": [
     "powerpoint",
@@ -14,8 +16,19 @@
     "electron"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "GNU GPLv3.0",
   "devDependencies": {
-    "electron": "^40.6.0"
+    "electron": "42.0.0-alpha.5",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.why3v3rn07.pptwebview",
+    "productName": "PPT WebView Overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    }
   }
 }
