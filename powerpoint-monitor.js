@@ -2,16 +2,17 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 class PowerPointMonitor {
-  constructor() {
+  constructor(basePath) {
     this.isMonitoring = false;
     this.currentSlideIndex = -1;
     this.onSlideChangeCallback = null;
     this.process = null;
     this.lineBuffer = '';
 
-    // Path to embedded Python
-    this.pythonPath = path.join(__dirname, 'resources', 'python', 'python.exe');
-    this.scriptPath = path.join(__dirname, 'powerpoint-monitor.py');
+    // Path to embedded Python — resolved by main.js based on app.isPackaged
+    this.basePath = basePath || path.join(__dirname, 'resources');
+    this.pythonPath = path.join(this.basePath, 'python', 'python.exe');
+    this.scriptPath = path.join(this.basePath, '..', 'powerpoint-monitor.py');
   }
 
   // Start monitoring PowerPoint
@@ -29,7 +30,9 @@ class PowerPointMonitor {
     console.log('Python path:', this.pythonPath);
     console.log('Script path:', this.scriptPath);
 
-    this.process = spawn(this.pythonPath, [this.scriptPath]);
+    this.process = spawn(this.pythonPath, [this.scriptPath], {
+      cwd: path.join(this.basePath, 'python')
+    });
 
     this.process.stdout.on('data', (data) => {
       // Buffer incoming data and process complete lines.

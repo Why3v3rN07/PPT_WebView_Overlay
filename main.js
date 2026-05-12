@@ -3,9 +3,23 @@ const path = require('path');
 const fs = require('fs');
 const PowerPointMonitor = require('./powerpoint-monitor');
 
+// ============================================================================
+// Path Resolution: Dev vs. Packaged
+//
+// - dev mode (app.isPackaged = false): Python and scripts are in ./resources
+// - packaged (app.isPackaged = true): Python and scripts are in process.resourcesPath
+// ============================================================================
+const basePath = app.isPackaged
+    ? process.resourcesPath
+    : path.join(__dirname, 'resources');
+
+console.log(`[Path Resolution] app.isPackaged: ${app.isPackaged}`);
+console.log(`[Path Resolution] process.resourcesPath: ${process.resourcesPath}`);
+console.log(`[Path Resolution] basePath: ${basePath}`);
+
 let mainWindow = null;
 let tray = null;
-let monitor = new PowerPointMonitor();
+let monitor = new PowerPointMonitor(basePath);
 let isMonitoring = false;
 
 // ---------------------------------------------------------------------------
@@ -49,7 +63,7 @@ app.whenReady().then(() => {
     protocol.handle('widget', (request) => {
         const url = new URL(request.url);
         const name = url.hostname;   // "clock", "weather", "date"
-        const filePath = path.join(__dirname, 'widgets', `${name}.html`);
+        const filePath = path.join(basePath, '..', 'widgets', `${name}.html`);
         // Serve the local file; query params are available to the page via location.search
         return net.fetch('file://' + filePath);
     });
@@ -374,7 +388,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 680, height: 780,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
+            preload: path.join(basePath, '..', 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true
         }
