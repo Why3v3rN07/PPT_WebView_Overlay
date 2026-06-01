@@ -406,7 +406,9 @@ function createWindow() {
     mainWindow.loadFile('index.html');
     mainWindow.webContents.openDevTools();
     mainWindow.on('closed', () => {
+        stopMonitoring();
         mainWindow = null;
+        app.quit();
     });
 }
 
@@ -472,7 +474,6 @@ app.whenReady().then(() => {
     });
 });
 
-app.on('window-all-closed', () => {
-});
+
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('before-quit', () => closeAllOverlays());
