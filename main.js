@@ -1,4 +1,9 @@
-const {app, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen, protocol, net} = require('electron');
+/** @type {import('electron').App} */
+let app;
+({app, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen, protocol, net, nativeImage} = require('electron'));
+
+console.log("App started, isPackaged:", app.isPackaged);
+
 const path = require('path');
 const fs = require('fs');
 const PowerPointMonitor = require('./powerpoint-monitor');
@@ -12,15 +17,14 @@ const PowerPointMonitor = require('./powerpoint-monitor');
 const basePath = app.isPackaged
     ? process.resourcesPath
     : path.join(__dirname, 'resources');
-
-console.log(`[Path Resolution] app.isPackaged: ${app.isPackaged}`);
-console.log(`[Path Resolution] process.resourcesPath: ${process.resourcesPath}`);
-console.log(`[Path Resolution] basePath: ${basePath}`);
+const iconPath = path.join(basePath, 'pwv_icon.png');
 
 let mainWindow = null;
 let tray = null;
-let monitor = new PowerPointMonitor(basePath);
+let monitor = null;
 let isMonitoring = false;
+
+
 
 // ---------------------------------------------------------------------------
 // Settings  (persisted to userData/settings.json)
@@ -126,6 +130,7 @@ function createOverlayWindow(x, y, width, height, url, interactive) {
         skipTaskbar: true,
         hasShadow: false,
         focusable: interactive,
+        icon: nativeImage.createFromPath(iconPath),
         webPreferences: {nodeIntegration: false, contextIsolation: true},
     });
 
@@ -230,11 +235,16 @@ function closeAllOverlays() {
 // ---------------------------------------------------------------------------
 
 function startMonitoring() {
+    if (!monitor) {
+        console.error("Monitor not initialized yet");
+        return;
+    }
     if (isMonitoring) return;
     isMonitoring = true;
     console.log('Starting PowerPoint monitoring…');
     monitor.start((slideIndex, state) => handleSlideChange(slideIndex, state));
 }
+
 
 function stopMonitoring() {
     if (!isMonitoring) return;
@@ -388,7 +398,7 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: 680, height: 780,
         webPreferences: {
-            preload: path.join(basePath, '..', 'preload.js'),
+            preload: path.join(app.getAppPath(), 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true
         }
@@ -401,30 +411,51 @@ function createWindow() {
 }
 
 function createTray() {
+    tray = new Tray(iconPath);
+
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show Config', click: () => {
-                if (!mainWindow) createWindow(); else mainWindow.show();
+            label: 'Show Config',
+            click: () => {
+                if (!mainWindow) createWindow();
+                else mainWindow.show();
             }
         },
-        {label: 'Start Monitoring', click: () => startMonitoring()},
-        {label: 'Stop Monitoring', click: () => stopMonitoring()},
-        {type: 'separator'},
-        {label: 'Quit', click: () => app.quit()}
+        { label: 'Start Monitoring', click: () => startMonitoring() },
+        { label: 'Stop Monitoring', click: () => stopMonitoring() },
+        { type: 'separator' },
+        { label: 'Quit', click: () => app.quit() }
     ]);
-    // tray.setContextMenu(contextMenu);
+
+    tray.setToolTip('PPT WebView Overlay');
+    tray.setContextMenu(contextMenu);
 }
+
 
 // ---------------------------------------------------------------------------
 // IPC + lifecycle
 // ---------------------------------------------------------------------------
 
+// Silence specific load errors from webviews
+app.on('web-contents-created', (_, contents) => {
+  contents.on('did-fail-load', (event, errorCode) => {
+    if (errorCode === -105) return; // ERR_NAME_NOT_RESOLVED
+  });
+});
+
 ipcMain.on('test-overlay', (_, d) => reloadWindows.push(createOverlayWindow(d.x, d.y, d.width, d.height, d.url, true)));
 ipcMain.on('close-overlays', () => closeAllOverlays());
-ipcMain.on('start-monitoring', () => startMonitoring());
-ipcMain.on('stop-monitoring', () => stopMonitoring());
 
 app.whenReady().then(() => {
+    // 1. Create the monitor AFTER Electron is ready
+    monitor = new PowerPointMonitor(basePath);
+    console.log("PowerPointMonitor initialized");
+
+    // 2. Register IPC handlers AFTER monitor exists
+    ipcMain.on('start-monitoring', () => startMonitoring());
+    ipcMain.on('stop-monitoring', () => stopMonitoring());
+
+    // 3. Create window and tray AFTER preload + IPC are ready
     createWindow();
     createTray();
     globalShortcut.register('CommandOrControl+Shift+Q', () => closeAllOverlays());
