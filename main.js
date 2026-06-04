@@ -6,6 +6,8 @@ console.log("App started, isPackaged:", app.isPackaged);
 
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 const PowerPointMonitor = require('./powerpoint-monitor');
 
 // ============================================================================
@@ -52,6 +54,37 @@ ipcMain.handle('set-setting', (_, key, value) => {
     saveSettings();
 });
 
+// Proxy for IP geolocation (bypasses CORS issues from widget:// origin)
+ipcMain.handle('geolocate-from-ip', async () => {
+    return new Promise((resolve, reject) => {
+        http.get('http://ip-api.com/json/', (res) => {
+            let data = '';
+            res.on('data', chunk => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    if (json.status !== 'success') {
+                        reject(new Error(json.message || 'Unknown error'));
+                    } else {
+                        // Map to ipapi.co format for compatibility
+                        resolve({
+                            latitude: json.lat,
+                            longitude: json.lon,
+                            city: json.city,
+                            region: json.region
+                        });
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on('error', reject);
+    }).catch(err => {
+        console.error('IP geolocation failed:', err.message);
+        throw err;
+    });
+});
+
 // ---------------------------------------------------------------------------
 // widget:// custom protocol
 //
@@ -64,12 +97,19 @@ ipcMain.handle('set-setting', (_, key, value) => {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(() => {
+    const { pathToFileURL } = require('url');
+
     protocol.handle('widget', (request) => {
         const url = new URL(request.url);
         const name = url.hostname;   // "clock", "weather", "date"
-        const filePath = path.join(basePath, '..', 'widgets', `${name}.html`);
+        // In packaged mode widgets are at <resources>/widgets
+        // In dev mode basePath is __dirname/resources, so basePath/.. -> project root
+        const filePath = app.isPackaged
+            ? path.join(process.resourcesPath, 'widgets', `${name}.html`)
+            : path.join(basePath, '..', 'widgets', `${name}.html`);
+
         // Serve the local file; query params are available to the page via location.search
-        return net.fetch('file://' + filePath);
+        return net.fetch(pathToFileURL(filePath).toString());
     });
 });
 
@@ -131,7 +171,11 @@ function createOverlayWindow(x, y, width, height, url, interactive) {
         hasShadow: false,
         focusable: interactive,
         icon: nativeImage.createFromPath(iconPath),
-        webPreferences: {nodeIntegration: false, contextIsolation: true},
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(app.getAppPath(), 'preload.js'),
+        },
     });
 
     if (!interactive) win.setIgnoreMouseEvents(true);
@@ -373,6 +417,7 @@ async function handleSlideChange(slideIndex, state) {
         return;
     }
 
+    //TODO: make this actually work
     const delayMs = Math.round((state.transitionDuration || 0) * 1000) + TRANSITION_BUFFER_MS;
     console.log(`\n=== SLIDE ${slideIndex}  (placing overlays in ${delayMs}ms) ===`);
 
@@ -477,3 +522,5 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('before-quit', () => closeAllOverlays());
+
+

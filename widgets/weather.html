@@ -121,7 +121,7 @@
     }
 
     async function geolocate() {
-      // If loc param given, geocode by name. Otherwise fall back to IP geolocation.
+      // If loc param given, geocode by name. Otherwise fall back to IP geolocation via IPC.
       if (locParam) {
         const r = await fetch(
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locParam)}&count=1&language=en&format=json`
@@ -131,9 +131,8 @@
         const { latitude, longitude, name, country_code } = d.results[0];
         return { latitude, longitude, label: country_code ? `${name}, ${country_code.toUpperCase()}` : name };
       } else {
-        // IP-based geolocation — free, no key needed
-        const r = await fetch('https://ipapi.co/json/');
-        const d = await r.json();
+        // Use IPC to fetch geolocation (main process, no CORS)
+        const d = await window.electronAPI.geolocateFromIp();
         if (!d.latitude) throw new Error('Could not determine location');
         return { latitude: d.latitude, longitude: d.longitude, label: d.city || d.region || 'Here' };
       }

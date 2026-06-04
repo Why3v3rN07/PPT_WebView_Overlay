@@ -1,6 +1,6 @@
 {
   "name": "ppt_webviewer",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Overlay web content on PowerPoint presentations",
   "main": "main.js",
   "scripts": {
@@ -32,7 +32,8 @@
       "icon": "runtime/pwv_icon.ico"
     },
     "extraResources": [
-      "runtime/**"
+      "runtime/**",
+      "widgets/**"
     ]
   }
 }

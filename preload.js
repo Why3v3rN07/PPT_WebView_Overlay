@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopMonitoring:   ()     => ipcRenderer.send('stop-monitoring'),
   getSetting:       (key)        => ipcRenderer.invoke('get-setting', key),
   setSetting:       (key, value) => ipcRenderer.invoke('set-setting', key, value),
+  geolocateFromIp:  ()     => ipcRenderer.invoke('geolocate-from-ip'),
 });
